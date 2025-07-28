@@ -2,170 +2,98 @@
 class AudioEngine {
   private audioContext: AudioContext | null = null
   private sounds: { [key: string]: AudioBuffer } = {}
+  private loadingPromises: { [key: string]: Promise<AudioBuffer> } = {}
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      this.audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     }
   }
 
   async initialize() {
     if (!this.audioContext) return
+    // Audio files will be loaded on-demand
+  }
 
-    // Generate drum sounds programmatically
-    this.sounds = {
-      kick: this.generateKick(),
-      snare: this.generateSnare(),
-      hihat: this.generateHiHat(),
-      openhat: this.generateOpenHat(),
-      clap: this.generateClap(),
-      crash: this.generateCrash(),
-      perc: this.generatePerc()
+  async loadAudioFile(filePath: string): Promise<AudioBuffer> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available')
+    }
+
+    // Return cached sound if already loaded
+    if (this.sounds[filePath]) {
+      return this.sounds[filePath]
+    }
+
+    // Return existing loading promise if already loading
+    const existingPromise = this.loadingPromises[filePath]
+    if (existingPromise) {
+      return existingPromise
+    }
+
+    // Start loading the audio file
+    this.loadingPromises[filePath] = this.fetchAndDecodeAudio(filePath)
+    
+    try {
+      const buffer = await this.loadingPromises[filePath]
+      this.sounds[filePath] = buffer
+      delete this.loadingPromises[filePath]
+      return buffer
+    } catch (error) {
+      delete this.loadingPromises[filePath]
+      throw error
     }
   }
 
-  private generateKick(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.3
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 15)
-      const frequency = 60 * Math.exp(-t * 30)
-      data[i] = envelope * Math.sin(2 * Math.PI * frequency * t) * 0.8
+  private async fetchAndDecodeAudio(filePath: string): Promise<AudioBuffer> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available')
     }
 
-    return buffer
-  }
-
-  private generateSnare(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.2
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 20)
-      const noise = (Math.random() * 2 - 1)
-      const tone = Math.sin(2 * Math.PI * 200 * t)
-      data[i] = envelope * (noise * 0.7 + tone * 0.3) * 0.6
+    try {
+      const response = await fetch(`/audio files/${filePath}`)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`)
+      }
+      
+      const arrayBuffer = await response.arrayBuffer()
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer)
+      return audioBuffer
+    } catch (error) {
+      console.error(`Error loading audio file ${filePath}:`, error)
+      throw error
     }
-
-    return buffer
   }
 
-  private generateHiHat(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.1
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
+  async playSound(filePath: string, volume: number = 1) {
+    if (!this.audioContext) return
 
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 50)
-      const noise = (Math.random() * 2 - 1)
-      data[i] = envelope * noise * 0.3
+    try {
+      // Load the audio file if not already loaded
+      const buffer = await this.loadAudioFile(filePath)
+      
+      const source = this.audioContext.createBufferSource()
+      const gainNode = this.audioContext.createGain()
+      
+      source.buffer = buffer
+      gainNode.gain.value = volume
+
+      source.connect(gainNode)
+      gainNode.connect(this.audioContext.destination)
+      
+      source.start()
+    } catch (error) {
+      console.error(`Failed to play sound ${filePath}:`, error)
     }
-
-    return buffer
   }
 
-  private generateOpenHat(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.3
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 8)
-      const noise = (Math.random() * 2 - 1)
-      data[i] = envelope * noise * 0.4
+  // Preload a specific audio file
+  async preloadSound(filePath: string): Promise<void> {
+    try {
+      await this.loadAudioFile(filePath)
+    } catch (error) {
+      console.error(`Failed to preload sound ${filePath}:`, error)
     }
-
-    return buffer
-  }
-
-  private generateClap(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.15
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 25)
-      const noise = (Math.random() * 2 - 1)
-      const reverb = Math.sin(t * 1000) * 0.1
-      data[i] = envelope * (noise + reverb) * 0.5
-    }
-
-    return buffer
-  }
-
-  private generateCrash(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 1.0
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 3)
-      const noise = (Math.random() * 2 - 1)
-      const shimmer = Math.sin(2 * Math.PI * 5000 * t) * 0.2
-      data[i] = envelope * (noise * 0.8 + shimmer) * 0.4
-    }
-
-    return buffer
-  }
-
-  private generatePerc(): AudioBuffer {
-    if (!this.audioContext) return new AudioBuffer({ numberOfChannels: 1, length: 1, sampleRate: 44100 })
-    
-    const sampleRate = this.audioContext.sampleRate
-    const duration = 0.2
-    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate)
-    const data = buffer.getChannelData(0)
-
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sampleRate
-      const envelope = Math.exp(-t * 12)
-      const frequency = 400 + Math.sin(t * 50) * 200
-      data[i] = envelope * Math.sin(2 * Math.PI * frequency * t) * 0.5
-    }
-
-    return buffer
-  }
-
-  playSound(soundName: string, volume: number = 1) {
-    if (!this.audioContext || !this.sounds[soundName]) return
-
-    const source = this.audioContext.createBufferSource()
-    const gainNode = this.audioContext.createGain()
-    
-    source.buffer = this.sounds[soundName]
-    gainNode.gain.value = volume
-
-    source.connect(gainNode)
-    gainNode.connect(this.audioContext.destination)
-    
-    source.start()
   }
 
   async resumeContext() {

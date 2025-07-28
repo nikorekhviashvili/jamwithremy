@@ -6,36 +6,56 @@ interface StepSequencerProps {
   className?: string
 }
 
+// Remy's sound groups organized by category
+const SOUND_GROUPS = {
+  cough: { 
+    name: 'Cough', 
+    files: ['Cough 1.wav', 'Cough 2.wav', 'Cough 3.wav', 'Cough 4.wav', 'Cough 5.wav', 'Cough 6.wav', 'Cough 7.wav'],
+    defaultIndex: 0 
+  },
+  cry: { 
+    name: 'Cry', 
+    files: ['Cry 1.wav', 'Cry 2.wav', 'Cry 3.wav', 'Cry 4.wav', 'Cry 5.wav', 'Cry 6.wav', 'Cry 7.wav', 'Cry 8.wav', 'Cry 9.wav', 'Cry 10.wav', 'Cry 11.wav'],
+    defaultIndex: 0 
+  },
+  eat: { 
+    name: 'Eat', 
+    files: ['Eat 1.wav', 'Eat 2.wav', 'Eat 3.wav', 'Eat 4.wav', 'Eat 5.wav', 'Eat 6.wav', 'Eat 7.wav'],
+    defaultIndex: 0 
+  },
+  glurp: { 
+    name: 'Glurp', 
+    files: ['Glurp 1.wav', 'Glurp 2.wav', 'Glurp 3.wav', 'Glurp 4.wav', 'Glurp 5.wav', 'Glurp 6.wav', 'Glurp 7.wav', 'Glurp 8.wav'],
+    defaultIndex: 0 
+  },
+  misc: { 
+    name: 'Misc', 
+    files: ['Misc 1.wav', 'Misc 2.wav'],
+    defaultIndex: 0 
+  },
+  snore: { 
+    name: 'Snore', 
+    files: ['Snore 1.wav', 'Snore 2.wav', 'Snore 3.wav', 'Snore 4.wav', 'Snore 5.m4a'],
+    defaultIndex: 0 
+  },
+  squish: { 
+    name: 'Squish', 
+    files: ['Squish 1.m4a', 'Squish 2.wav', 'Squish 3.m4a', 'Squish 4.wav', 'Squish 5.wav', 'Squish 6.wav'],
+    defaultIndex: 0 
+  }
+}
+
+// Default sound selection - one from each group
 const DEFAULT_SOUNDS = [
-  { name: 'Kick', audioKey: 'kick' },
-  { name: 'Snare', audioKey: 'snare' },
-  { name: 'Hi-Hat', audioKey: 'hihat' },
-  { name: 'Open Hat', audioKey: 'openhat' },
-  { name: 'Clap', audioKey: 'clap' },
-  { name: 'Crash', audioKey: 'crash' },
-  { name: 'Perc', audioKey: 'perc' }
+  { name: 'Cough', groupKey: 'cough', fileIndex: 0, filePath: 'Cough 1.wav' },
+  { name: 'Cry', groupKey: 'cry', fileIndex: 0, filePath: 'Cry 1.wav' },
+  { name: 'Eat', groupKey: 'eat', fileIndex: 0, filePath: 'Eat 1.wav' },
+  { name: 'Glurp', groupKey: 'glurp', fileIndex: 0, filePath: 'Glurp 1.wav' },
+  { name: 'Misc', groupKey: 'misc', fileIndex: 0, filePath: 'Misc 1.wav' },
+  { name: 'Snore', groupKey: 'snore', fileIndex: 0, filePath: 'Snore 1.wav' },
+  { name: 'Squish', groupKey: 'squish', fileIndex: 0, filePath: 'Squish 1.m4a' }
 ]
 
-// Mock sound bank - in production this would come from your API
-const SOUND_BANK = [
-  { name: 'Kick', audioKey: 'kick' },
-  { name: 'Kick 2', audioKey: 'kick' },
-  { name: 'Sub Kick', audioKey: 'kick' },
-  { name: 'Snare', audioKey: 'snare' },
-  { name: 'Snare Roll', audioKey: 'snare' },
-  { name: 'Rim Shot', audioKey: 'snare' },
-  { name: 'Hi-Hat', audioKey: 'hihat' },
-  { name: 'Hi-Hat Tight', audioKey: 'hihat' },
-  { name: 'Open Hat', audioKey: 'openhat' },
-  { name: 'Open Hat Long', audioKey: 'openhat' },
-  { name: 'Clap', audioKey: 'clap' },
-  { name: 'Hand Clap', audioKey: 'clap' },
-  { name: 'Crash', audioKey: 'crash' },
-  { name: 'Crash Reverse', audioKey: 'crash' },
-  { name: 'Perc', audioKey: 'perc' },
-  { name: 'Bongo', audioKey: 'perc' },
-  { name: 'Cowbell', audioKey: 'perc' }
-]
 
 const STEPS = 32
 
@@ -49,6 +69,7 @@ export default function StepSequencer({ className }: StepSequencerProps) {
     Array(DEFAULT_SOUNDS.length).fill(null).map(() => Array(STEPS).fill(false))
   )
   const [soundPickerOpen, setSoundPickerOpen] = useState<number | null>(null)
+  const [loadingSounds, setLoadingSounds] = useState<Set<string>>(new Set())
   
   // Use ref to access current pattern without causing re-renders
   const patternRef = useRef(pattern)
@@ -92,7 +113,7 @@ export default function StepSequencer({ className }: StepSequencerProps) {
         if (isInitialized) {
           sounds.forEach((sound, soundIndex) => {
             if (patternRef.current[soundIndex][prev]) {
-              audioEngine.playSound(sound.audioKey, 0.7)
+              audioEngine.playSound(sound.filePath, 0.7)
             }
           })
         }
@@ -102,7 +123,7 @@ export default function StepSequencer({ className }: StepSequencerProps) {
     }, stepInterval)
 
     return () => clearInterval(interval)
-  }, [isPlaying, stepInterval, isInitialized])
+  }, [isPlaying, stepInterval, isInitialized, sounds])
 
   const toggleStep = useCallback((soundIndex: number, stepIndex: number) => {
     setPattern(prev => {
@@ -122,11 +143,26 @@ export default function StepSequencer({ className }: StepSequencerProps) {
 
   const previewSound = async (soundIndex: number) => {
     if (!isInitialized) return
-    await audioEngine.resumeContext()
-    audioEngine.playSound(sounds[soundIndex].audioKey, 0.7)
+    
+    const sound = sounds[soundIndex]
+    const filePath = sound.filePath
+    
+    try {
+      setLoadingSounds(prev => new Set([...prev, filePath]))
+      await audioEngine.resumeContext()
+      await audioEngine.playSound(filePath, 0.7)
+    } catch (error) {
+      console.error(`Failed to preview sound ${filePath}:`, error)
+    } finally {
+      setLoadingSounds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(filePath)
+        return newSet
+      })
+    }
   }
 
-  const selectSound = useCallback((soundIndex: number, newSound: typeof SOUND_BANK[0]) => {
+  const selectSound = useCallback((soundIndex: number, newSound: { name: string; groupKey: string; fileIndex: number; filePath: string }) => {
     setSounds(prev => {
       const newSounds = [...prev]
       newSounds[soundIndex] = newSound
@@ -270,10 +306,13 @@ export default function StepSequencer({ className }: StepSequencerProps) {
               <div className="flex items-center justify-between px-3 rounded-lg bg-muted/30 border border-border/50 w-[110px] h-8">
                 <button
                   onClick={() => previewSound(soundIndex)}
-                  className="text-sm font-medium hover:text-primary transition-colors flex-1 text-left truncate"
-                  disabled={!isInitialized}
+                  className="text-sm font-medium hover:text-primary transition-colors flex-1 text-left truncate flex items-center gap-2"
+                  disabled={!isInitialized || loadingSounds.has(sound.filePath)}
                 >
-                  {sound.name}
+                  {loadingSounds.has(sound.filePath) && (
+                    <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  )}
+                  {sound.name} {sound.fileIndex + 1}
                 </button>
                 <div className="relative sound-picker-container ml-1">
                   <button 
@@ -288,23 +327,90 @@ export default function StepSequencer({ className }: StepSequencerProps) {
                   </button>
                   
                   {soundPickerOpen === soundIndex && (
-                    <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-xl p-3 min-w-[200px] max-h-64 overflow-y-auto z-50">
-                      <div className="text-sm font-medium text-muted-foreground mb-3 px-1">Select Sound:</div>
-                      <div className="grid gap-1">
-                        {SOUND_BANK.map((bankSound, bankIndex) => (
+                    <>
+                      {/* Backdrop */}
+                      <div 
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+                        onClick={() => setSoundPickerOpen(null)}
+                      />
+                      
+                      {/* Modal */}
+                      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl shadow-2xl p-6 w-[400px] max-h-[600px] overflow-y-auto z-50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-foreground">Select Sound for Track {soundIndex + 1}</h3>
                           <button
-                            key={bankIndex}
-                            onClick={() => selectSound(soundIndex, bankSound)}
-                            className={cn(
-                              "px-3 py-2 text-left rounded-md text-sm hover:bg-muted transition-all duration-200",
-                              sounds[soundIndex].name === bankSound.name && "bg-primary text-primary-foreground hover:bg-primary/90"
-                            )}
+                            onClick={() => setSoundPickerOpen(null)}
+                            className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted/50 transition-colors"
                           >
-                            {bankSound.name}
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                           </button>
-                        ))}
+                        </div>
+                        
+                        <div className="space-y-4">
+                          {Object.entries(SOUND_GROUPS).map(([groupKey, group]) => (
+                            <div key={groupKey} className="space-y-2">
+                              <div className="text-sm font-semibold text-foreground px-3 py-2 bg-muted/30 rounded-lg">
+                                {group.name} ({group.files.length} sounds)
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {group.files.map((file, fileIndex) => {
+                                  const soundOption = {
+                                    name: group.name,
+                                    groupKey,
+                                    fileIndex,
+                                    filePath: file
+                                  }
+                                  const isSelected = sounds[soundIndex].groupKey === groupKey && sounds[soundIndex].fileIndex === fileIndex
+                                  
+                                  return (
+                                    <button
+                                      key={fileIndex}
+                                      onClick={() => {
+                                        selectSound(soundIndex, soundOption)
+                                        setSoundPickerOpen(null)
+                                      }}
+                                      onMouseEnter={async () => {
+                                        if (isInitialized && !loadingSounds.has(file)) {
+                                          try {
+                                            setLoadingSounds(prev => new Set([...prev, file]))
+                                            await audioEngine.resumeContext()
+                                            await audioEngine.playSound(file, 0.5)
+                                          } catch (error) {
+                                            console.error(`Failed to preview ${file}:`, error)
+                                          } finally {
+                                            setLoadingSounds(prev => {
+                                              const newSet = new Set(prev)
+                                              newSet.delete(file)
+                                              return newSet
+                                            })
+                                          }
+                                        }
+                                      }}
+                                      className={cn(
+                                        "px-4 py-3 text-left rounded-lg text-sm hover:bg-muted/60 transition-all duration-200 flex items-center gap-2 border",
+                                        isSelected 
+                                          ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary" 
+                                          : "bg-card border-border/50 hover:border-border"
+                                      )}
+                                    >
+                                      {loadingSounds.has(file) && (
+                                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                      )}
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{group.name} {fileIndex + 1}</span>
+                                        <span className="text-xs opacity-70">Hover to preview</span>
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>

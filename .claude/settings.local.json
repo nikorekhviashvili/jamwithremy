@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx tailwindcss:*)",
       "Bash(npx:*)",
-      "WebFetch(domain:tailwindcss.com)"
+      "WebFetch(domain:tailwindcss.com)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
