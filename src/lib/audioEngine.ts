@@ -1,8 +1,12 @@
-// Simple audio engine using Web Audio API
+import * as Tone from 'tone'
+import { effectsEngine } from './effectsEngine'
+
+// Simple audio engine using Web Audio API with effects support
 class AudioEngine {
   private audioContext: AudioContext | null = null
   private sounds: { [key: string]: AudioBuffer } = {}
   private loadingPromises: { [key: string]: Promise<AudioBuffer> } = {}
+  private toneInitialized = false
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -12,6 +16,19 @@ class AudioEngine {
 
   async initialize() {
     if (!this.audioContext) return
+    
+    // Initialize Tone.js with the same AudioContext
+    try {
+      // Set Tone.js to use our AudioContext
+      Tone.setContext(this.audioContext)
+      await effectsEngine.initialize()
+      this.toneInitialized = true
+      console.log('AudioEngine and Tone.js initialized successfully')
+    } catch (error) {
+      console.error('Failed to initialize Tone.js, falling back to direct audio:', error)
+      this.toneInitialized = false
+    }
+    
     // Audio files will be loaded on-demand
   }
 
@@ -65,7 +82,7 @@ class AudioEngine {
     }
   }
 
-  async playSound(filePath: string, volume: number = 1) {
+  async playSound(filePath: string, volume: number = 1, trackIndex?: number) {
     if (!this.audioContext) return
 
     try {
@@ -79,7 +96,39 @@ class AudioEngine {
       gainNode.gain.value = volume
 
       source.connect(gainNode)
-      gainNode.connect(this.audioContext.destination)
+      
+      // Route audio through effects if available, otherwise direct connection
+      if (trackIndex !== undefined && this.toneInitialized) {
+        try {
+          // Get the effect chain for this track
+          const effectChain = effectsEngine.getEffectChain(trackIndex)
+          
+          // Check if this track has any enabled effects
+          const hasEnabledEffects = effectChain.effects.some(effect => effect.enabled)
+          
+          if (hasEnabledEffects) {
+            // Since Tone.js is using the same AudioContext, we can connect directly
+            // Connect Web Audio gain node to Tone.js effect input
+            console.log(`Track ${trackIndex} has ${effectChain.effects.length} effects, ${effectChain.effects.filter(e => e.enabled).length} enabled`)
+            console.log('Effect chain:', effectChain.effects.map(e => `${e.type}(${e.enabled})`))
+            
+            gainNode.connect(effectChain.input.input as AudioNode)
+            
+            // Effect chain output is already connected to destination
+            
+            console.log(`Track ${trackIndex} using effects routing`)
+          } else {
+            // No enabled effects, use direct connection
+            gainNode.connect(this.audioContext.destination)
+          }
+        } catch (error) {
+          console.error('Effects routing failed, using direct connection:', error)
+          gainNode.connect(this.audioContext.destination)
+        }
+      } else {
+        // Direct connection (no effects or Tone.js not initialized)
+        gainNode.connect(this.audioContext.destination)
+      }
       
       source.start()
     } catch (error) {
@@ -100,6 +149,21 @@ class AudioEngine {
     if (this.audioContext?.state === 'suspended') {
       await this.audioContext.resume()
     }
+    
+    // Also resume Tone.js context (should be the same context now)
+    if (this.toneInitialized && Tone.getContext().state === 'suspended') {
+      await Tone.start()
+    }
+  }
+
+  // Get effects engine instance
+  getEffectsEngine() {
+    return effectsEngine
+  }
+
+  // Check if Tone.js is initialized
+  isToneInitialized() {
+    return this.toneInitialized
   }
 }
 

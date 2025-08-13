@@ -1,69 +1,37 @@
-# React + TypeScript + Vite
+# Jam with Remy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A music step sequencer web application for creating beats with Remy's weird sounds! 
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **16/32 Step Grid Sequencer**: Toggle between 16 and 32-step patterns
+- **7 Sound Categories**: Cough, Cry, Eat, Glurp, Misc, Snore, and Squish sounds
+- **Real-time Playback**: Create and play beats with adjustable tempo (60-180 BPM)
+- **Audio Effects**: Add reverb, delay, and filter effects to individual tracks
+- **Dark/Light Mode**: Beautiful UI with theme switching support
+- **Web Audio API**: High-quality audio playback with on-demand loading
 
-## Expanding the ESLint configuration
+## Technology Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** with TypeScript
+- **Vite** for fast development and building
+- **Tailwind CSS v4** for styling
+- **Web Audio API** for audio processing
+- **shadcn/ui** components
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Development Commands
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build production version
+- `npm run lint` - Run ESLint on all files
+- `npm run preview` - Preview production build locally
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Getting Started
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. Install dependencies: `npm install`
+2. Start the development server: `npm run dev`
+3. Open your browser and start jamming with Remy's sounds!
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Audio Files
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+All audio samples are stored in `/public/audio files/` and are loaded dynamically using the Web Audio API for optimal performance.
